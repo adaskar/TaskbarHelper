@@ -90,6 +90,7 @@ BOOL IsShellWndVisible(HWND hwShellWnd)
 	return FALSE;
 }
 
+HWND lastHandle;
 LRESULT CALLBACK HookMouseCallback(INT nCode, WPARAM wParam, LPARAM lParam)
 {
 	int i;
@@ -106,12 +107,22 @@ LRESULT CALLBACK HookMouseCallback(INT nCode, WPARAM wParam, LPARAM lParam)
 			break;
 		}
 
-		if (PtInRect(&g_rcTaskbars[i], ((PMSLLHOOKSTRUCT)lParam)->pt)) {
+		QUERY_USER_NOTIFICATION_STATE pquns;
+		SHQueryUserNotificationState(&pquns);
+
+		if (PtInRect(&g_rcTaskbars[i], ((PMSLLHOOKSTRUCT)lParam)->pt) &&
+			!IsShellWndVisible(g_hwTaskbars[i])
+			&& (pquns == 2 || pquns == 3 || pquns == 4 || pquns == 3)) {
 			GUITHREADINFO gti = { .cbSize = sizeof(GUITHREADINFO) };
 
-			if (!IsShellWndVisible(g_hwTaskbars[i])) {
-				SetForegroundWindow(g_hwTaskbars[i]);
-			}
+			lastHandle = GetForegroundWindow();
+			SetForegroundWindow(g_hwTaskbars[i]);
+		}
+
+		if (!PtInRect(&g_rcTaskbars[i], ((PMSLLHOOKSTRUCT)lParam)->pt) &&
+			lastHandle != NULL) {
+			SetForegroundWindow(lastHandle);
+			lastHandle = NULL;
 		}
 	}
 
